@@ -1,0 +1,4 @@
+Silownia,Wazne,jutro,Hobby,dipy,False
+napisac program ,malo wazne ,19.10,Job,,True
+Powiem ci ,cos,co,Private,jednak ci nic nie powiem,False
+XD,XD,XD,Job,XDD,False
