@@ -1,5 +1,5 @@
-Silownia,Wazne,jutro,Hobby,dipy,False
-napisac program ,malo wazne ,19.10,Job,,True
-Powiem ci ,cos,co,Private,jednak ci nic nie powiem,False
-XD,XD,XD,Job,XDD,False
-jebac janka,niski,janek,Hobby,gagri,False
+N1,Very Important,10-11-2003,Job,opis,False,30-05-2024,None
+N2,Not Important,02-02-0202,Job,op,True,30-05-2024,30-05-2024
+tytus,Important,10-10-2024,Hobby,opis,False,30-05-2024,None
+xd,Important,10-10-2025,Job,opisxd,True,30-05-2024,02-06-2024
+xddddd,Important,10-10-2025,Job,opisek,False,02-06-2024,None

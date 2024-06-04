@@ -1,4 +1,6 @@
 #Author: Tomasz Pluciński
+from datetime import datetime
+
 
 #Errors:
 class InvalidDateError(Exception):
@@ -8,6 +10,11 @@ class InvalidDateError(Exception):
 
 class TaskNotFoundError(Exception):
     """Raised when the task is not found"""
+    pass
+
+
+class InvalidDeadlineError(Exception):
+    """Raised when the deadline is not in correct format"""
     pass
 
 
@@ -21,10 +28,20 @@ class Task:
         self.deadline = deadline
         self.category = category
         self.description = description
+        #new tasks are not done
         self.is_done = False
+        #created date is a current date using datetime lib
+        self.created_date = datetime.now().strftime('%d-%m-%Y')
+        #at the beginning end_date is None cause task is not done
+        self.end_date = None
 
+    #print task
     def show_task(self):
-        return f"{self.title} | {self.priority} | {self.deadline} | {self.category} | {self.description} | {self.is_done}"
+        return f"{self.title} | {self.priority} | {self.deadline} | {self.category} | {self.description} | {self.is_done} | {self.created_date}"
+
+    def mark_as_done(self):
+        self.is_done = True
+        self.end_date = datetime.now().strftime('%d-%m-%Y')
 
 
 pass
@@ -61,7 +78,9 @@ class FileHandler:
         with open(self.file_name, 'w') as file:
             for task in tasks:
                 # for all tasks in list we change format by adding a comma between task values and write it into file
-                task_data = f"{task.title},{task.priority},{task.deadline},{task.category},{task.description},{task.is_done}"
+                #string format
+                task_data = (f"{task.title},{task.priority},{task.deadline},{task.category},{task.description},"
+                             f"{task.is_done},{task.created_date},{task.end_date}")
                 file.write(task_data + '\n')
 
     def read_from_file(self):
@@ -69,12 +88,20 @@ class FileHandler:
         try:
             with open(self.file_name, 'r') as file:
                 for line in file:
-                    #strip() is deleting white chars ' ' and \n on start and end line
-                    #split is for splitting line into parts
-                    #last part is changing string form is_done into boolean and it based on value in line
-                    title, priority, deadline, category, description, is_done = line.strip().split(',')
-                    tasks.append(Task(title, priority, deadline, category, description))
-                    tasks[-1].is_done = is_done == 'True'
+                    #list of task values
+                    parts = line.strip().split(',')
+                    if len(parts) == 8:
+                        title, priority, deadline, category, description, is_done, created_date, end_date = parts
+                        task = Task(title, priority, deadline, category, description)
+                        #check if is_done is True or False
+                        task.is_done = is_done.strip() == 'True'
+                        #add created date
+                        task.created_date = created_date
+                        #task.created_date = created_date.strip()
+                        task.end_date = end_date
+                        tasks.append(task)
+                    else:
+                        print("Invalid line")
         except FileNotFoundError:
             print("File not found. Starting with an empty task list.")
         return tasks
@@ -96,6 +123,30 @@ def print_menu():
     print("7. Save updates into file")
     print("8. Generate stats about tasks")
     print("---------------")
+
+
+def choose_priority():
+    is_priority_chosen = False
+    chosen_priority = ""
+    while not is_priority_chosen:
+        print("Pick priority for this task: ")
+        print("1. Very Important")
+        print("2. Important")
+        print("3. Not Important")
+        t_category = input("Enter a priority number: ")
+        match t_category:
+            case '1':
+                chosen_priority = "Very Important"
+                is_priority_chosen = True
+            case '2':
+                chosen_priority = "Important"
+                is_priority_chosen = True
+            case '3':
+                chosen_priority = "Not Important"
+                is_priority_chosen = True
+            case _:
+                print("You chose bad number of priority, try again!")
+    return chosen_priority
 
 
 def choose_category():
@@ -122,10 +173,34 @@ def choose_category():
     return chosen_category
 
 
+def enter_deadline():
+    is_deadline_correct = False
+
+    while not is_deadline_correct:
+        try:
+            deadline = input("Enter a deadline in format DD-MM-YYYY: ")
+            if len(deadline) == 10 and deadline[2] == '-' and deadline[5] == '-':
+                day, month, year = deadline[0:2], deadline[3:5], deadline[6:10]
+                if day.isnumeric() and month.isnumeric() and year.isnumeric():
+                    if int(year) < datetime.now().year:
+                        raise InvalidDeadlineError
+                    if 1 <= int(day) <= 31 and 1 <= int(month) <= 12:
+                        is_deadline_correct = True
+                        return deadline
+                    else:
+                        raise InvalidDeadlineError
+                else:
+                    raise InvalidDeadlineError
+            else:
+                raise InvalidDeadlineError
+        except InvalidDeadlineError:
+            print("Invalid Deadline Error")
+
+
 def add_new_task():
     t_title = input("Enter a task title: ")
-    t_priority = input("Enter a task priority: ")
-    t_deadline = input("Enter a task deadline: ")
+    t_priority = choose_priority()
+    t_deadline = enter_deadline()
     t_category = choose_category()
     t_description = input("Enter a task description: ")
     #is_done is stupid to input by user, i think if someone add new task its not done
@@ -160,7 +235,6 @@ def update_task():
             if 0 <= chosen_index < len(task_manager.tasks):
                 old_task = task_manager.tasks[chosen_index]
                 print("Chosen task: ", old_task.show_task())
-
                 print("What do you want to edit: ")
                 print("1. Title")
                 print("2. Priority")
@@ -174,10 +248,10 @@ def update_task():
                         new_title = input("Enter a new title: ")
                         old_task.title = new_title
                     elif user_input == 2:
-                        new_priority = input("Enter a new priority: ")
+                        new_priority = choose_priority()
                         old_task.priority = new_priority
                     elif user_input == 3:
-                        new_deadline = input("Enter a new deadline: ")
+                        new_deadline = enter_deadline()
                         old_task.deadline = new_deadline
                     elif user_input == 4:
                         new_category = choose_category()
@@ -198,12 +272,14 @@ def update_task():
             print("There is no task with the provided index.")
 
 
+#print all tasks
 def show_tasks():
     print("Tasks list:")
-    print("[Title, Priority, Deadline, Category, Description, Is done]")
+    print("[Title, Priority, Deadline, Category, Description, Is done, Created date]")
     task_manager.show_tasks()
 
 
+#change is_done to True if its not done
 def mark_completed_task():
     chosen_task_id = (int)(input("Which task do you want to mark as Done"))
     #check if the id of chosen task is correct
@@ -212,7 +288,8 @@ def mark_completed_task():
             if task_manager.tasks[chosen_task_id].is_done:
                 print("You can't do that, because this task is already done!")
             else:
-                task_manager.tasks[chosen_task_id].is_done = True
+                #task_manager.tasks[chosen_task_id].is_done = True
+                task_manager.tasks[chosen_task_id].mark_as_done()
                 print("You've done this task, congratulations!")
         else:
             raise InvalidDateError
@@ -243,7 +320,7 @@ def filter_tasks():
             for task in searched_tasks:
                 print(task.show_task())
         case "3":
-            #filter on is done
+            #filter on is_done
             typed_is_done = input("Enter a searched is_done [status]: ")
             # Convert the string to a boolean value
             typed_is_done = typed_is_done.lower() in ['true', '1']
@@ -255,6 +332,7 @@ def filter_tasks():
 
 
 #Info about program [name, author, version]
+
 print("<><><><><><><><><><><><><><><>")
 print("Welcome in the Task Management System")
 print("Created by: Tomasz Plucinski")
@@ -288,10 +366,30 @@ while True:
             case 8:
                 print("Generating stats about tasks.")
                 #how many tasks are done (percantage)
-
+                counter_done = 0
+                counter_not_done = 0
+                for task in task_manager.tasks:
+                    if task.is_done:
+                        counter_done += 1
+                print(f"Percentage of done tasks: {counter_done/len(task_manager.tasks) * 100}%")
                 #avarage time for tasks
+                sum_days = 0
+                for task in task_manager.tasks:
+                    if task.is_done:
+                        created_date = datetime.strptime(task.created_date, '%d-%m-%Y')
+                        end_date = datetime.strptime(task.end_date, '%d-%m-%Y')
+                        sum_days += (end_date - created_date).days
+                print(f"Avarage time for tasks: {sum_days / counter_done} days")
 
                 #the most common priorities
+                priorities = {}
+                for task in task_manager.tasks:
+                    if task.priority in priorities:
+                        priorities[task.priority] += 1
+                    else:
+                        priorities[task.priority] = 1
+                print("The most common priorities:", max(priorities, key=priorities.get))
+
             case _:
                 print("Invalid choice, please enter a number from 1 to 8.")
     except ValueError:
